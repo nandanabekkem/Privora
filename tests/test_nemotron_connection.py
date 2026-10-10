@@ -1,21 +1,35 @@
 
+from unittest.mock import Mock, patch
+
+import pytest
+
 from ai_agent.reasoning.nemotron import NemotronClient
 
 
-def main():
-    agent = NemotronClient()
-
-    result = agent.ask(
-    "A fictional account called DemoMusic has been inactive "
-    "for 18 months. Recommend one privacy-conscious next step. "
-    "Return only the final recommendation in 1-2 sentences. "
-    "Do not include analysis, reasoning steps, or a numbered list. "
-    "Do not claim that any action has been performed."
-)
-
-    print("\n--- Privora Nemotron Test ---")
-    print(result)
+@patch.dict("os.environ", {}, clear=True)
+@patch("ai_agent.reasoning.nemotron.load_dotenv")
+def test_missing_api_key_raises_error(mock_load_dotenv):
+    with pytest.raises(ValueError, match="NVIDIA_API_KEY is missing"):
+        NemotronClient()
 
 
-if __name__ == "__main__":
-    main()
+@patch("ai_agent.reasoning.nemotron.OpenAI")
+def test_ask_returns_model_response(mock_openai):
+    mock_client = Mock()
+    mock_message = Mock()
+    mock_message.content = "Review the account's privacy settings."
+    mock_client.chat.completions.create.return_value.choices = [
+        Mock(message=mock_message)
+    ]
+    mock_openai.return_value = mock_client
+
+    with patch.dict(
+        "os.environ",
+        {"NVIDIA_API_KEY": "test-key"},
+    ):
+        agent = NemotronClient()
+
+    result = agent.ask("Give one privacy-conscious recommendation.")
+
+    assert result == "Review the account's privacy settings."
+    mock_client.chat.completions.create.assert_called_once()

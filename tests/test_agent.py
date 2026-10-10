@@ -1,8 +1,17 @@
 
+from unittest.mock import Mock, patch
+
 from ai_agent.agent import PrivoraAgent
 
 
-def main():
+@patch("ai_agent.agent.NemotronClient")
+def test_agent_analyzes_account_and_returns_recommendation(mock_client):
+    mock_nemotron = Mock()
+    mock_nemotron.ask.return_value = (
+        "Review the service's data-sharing practices."
+    )
+    mock_client.return_value = mock_nemotron
+
     agent = PrivoraAgent()
 
     result = agent.analyze_account(
@@ -19,23 +28,35 @@ def main():
         },
     )
 
-    print("\n--- Privora Full Agent Test ---")
-
-    print("\nAccount Analysis:")
-    print(result["account_analysis"])
-
-    print("\nPersonal Data Analysis:")
-    print(result["data_analysis"])
-
-    print("\nPolicy Analysis:")
-    for finding in result["policy_analysis"]["findings"]:
-        print("-", finding)
-
-    print("\nNemotron Recommendation:")
-    print(result["recommendation"])
-
-    print("\nAction performed:", result["action_performed"])
+    assert result["account_analysis"]["risk_level"] == "medium"
+    assert result["data_analysis"]["sensitivity"] == "moderate"
+    assert result["policy_analysis"]["needs_review"] is False
+    assert result["recommendation"] == (
+        "Review the service's data-sharing practices."
+    )
+    assert result["action_performed"] is False
+    mock_nemotron.ask.assert_called_once()
 
 
-if __name__ == "__main__":
-    main()
+@patch("ai_agent.agent.NemotronClient")
+def test_agent_flags_sensitive_data(mock_client):
+    mock_nemotron = Mock()
+    mock_nemotron.ask.return_value = "Review the handling of sensitive data."
+    mock_client.return_value = mock_nemotron
+
+    agent = PrivoraAgent()
+
+    result = agent.analyze_account(
+        account={
+            "name": "DemoBank",
+            "service_type": "banking",
+            "inactive_months": 1,
+        },
+        data_categories=["financial"],
+        policy_facts={},
+    )
+
+    assert result["account_analysis"]["risk_level"] == "high"
+    assert result["data_analysis"]["sensitivity"] == "high"
+    assert result["policy_analysis"]["needs_review"] is True
+    assert result["action_performed"] is False
