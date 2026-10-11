@@ -218,3 +218,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# Privora local secrets and environment files
+.env
+.env.*
+!.env.example
+
+# Local development artifacts
+backend/.venv/
+backend/.pytest_cache/
+backend/**/__pycache__/
+backend/alembic_backup/
+
+# IDE settings
+.idea/
+.vscode/
