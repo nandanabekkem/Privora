@@ -1,0 +1,10 @@
+{
+  "description": "AI-powered privacy assistant helps users discover and manage personal data across accounts with tailored recommendations and easy privacy controls.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
