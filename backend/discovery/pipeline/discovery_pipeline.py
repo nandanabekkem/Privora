@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List
 from ..sources.email.gmail_provider import GmailProvider
+from ..core.constants import GMAIL_DISCOVERY_QUERY
 
 from ..models.schemas import (
     AccountStatus,
@@ -52,12 +53,25 @@ class DiscoveryPipeline:
         self.vault = vault or IdentityVault()
         self.aggregator = aggregator or AccountAggregator()
 
+    
     def run(self) -> List[SanitizedAccountContext]:
         """
         Run account discovery and return one sanitized context
         per discovered service.
         """
-        raw_emails = self.email_provider.fetch_records()
+        discovery_fetcher = getattr(
+            self.email_provider,
+            "fetch_discovery_records",
+            None,
+        )
+
+        if callable(discovery_fetcher):
+            raw_emails = discovery_fetcher(
+                query=GMAIL_DISCOVERY_QUERY,
+            )
+        else:
+            # Synthetic and other providers retain their existing behavior.
+            raw_emails = self.email_provider.fetch_records()
 
         parsed_emails = self.parser.parse_many(raw_emails)
 

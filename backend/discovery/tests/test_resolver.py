@@ -1,6 +1,7 @@
 import pytest
 
 from ..resolver.service_resolver import ServiceResolver
+from discovery.resolver.service_resolver import ServiceResolver
 
 
 @pytest.fixture
@@ -93,3 +94,31 @@ def test_resolve_empty_domain(
     assert result["service_name"] == "Unknown Service"
     assert result["domain"] == ""
     assert result["relationship"] is None
+
+
+def test_resolves_known_service_subdomain():
+    resolver = ServiceResolver()
+
+    result = resolver.resolve("emails.unstop.com")
+
+    assert result["service_name"] == "Unstop"
+    assert result["domain"] == "unstop.com"
+    assert result["relationship"] == "hackathon"
+
+
+def test_resolves_github_notification_subdomain():
+    resolver = ServiceResolver()
+
+    result = resolver.resolve("notifications.github.com")
+
+    assert result["service_name"] == "GitHub"
+    assert result["domain"] == "github.com"
+
+
+def test_does_not_match_deceptive_domain_suffix():
+    resolver = ServiceResolver()
+
+    result = resolver.resolve("unstop.com.evil.test")
+
+    assert result["service_name"] != "Unstop"
+    assert result["domain"] == "unstop.com.evil.test"

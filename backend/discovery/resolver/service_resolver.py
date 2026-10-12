@@ -5,8 +5,8 @@ class ServiceResolver:
     """
     Resolves discovered domains into recognizable service metadata.
 
-    Known services use explicit metadata. Unknown services are still
-    preserved instead of being discarded.
+    Known services use explicit metadata. Known subdomains resolve
+    to their canonical service. Unknown services are preserved.
     """
 
     SERVICE_MAP: Dict[str, Dict[str, str]] = {
@@ -57,17 +57,24 @@ class ServiceResolver:
     }
 
     def resolve(self, domain: str) -> Dict[str, Optional[str]]:
-        """
-        Resolve a domain into service metadata.
-        """
+        """Resolve a domain to canonical service metadata."""
         normalized_domain = self._normalize_domain(domain)
 
-        service = self.SERVICE_MAP.get(normalized_domain)
+        # Prefer exact matches before checking genuine subdomains.
+        canonical_domain = None
+        if normalized_domain in self.SERVICE_MAP:
+             canonical_domain = normalized_domain
+        else:
+              for known_domain in self.SERVICE_MAP:
+                   if normalized_domain.endswith("." + known_domain):
+                         canonical_domain = known_domain
+                         break
 
-        if service:
+        if canonical_domain is not None:
+            service = self.SERVICE_MAP[canonical_domain]
             return {
                 "service_name": service["service_name"],
-                "domain": normalized_domain,
+                "domain": canonical_domain,
                 "relationship": service["relationship"],
             }
 
@@ -80,23 +87,35 @@ class ServiceResolver:
         }
 
     def _normalize_domain(self, domain: str) -> str:
-        """
-        Normalize common domain variations.
-        """
-        normalized = domain.lower().strip()
+        """Normalize casing, whitespace, and common www prefixes."""
+        normalized = domain.lower().strip().rstrip(".")
 
         if normalized.startswith("www."):
             normalized = normalized[4:]
 
         return normalized
 
+    
     def _generate_service_name(self, domain: str) -> str:
-        """
-        Generate a readable fallback name for unknown services.
-        """
-        name = domain.split(".")[0]
-
-        if not name:
+        """Generate a readable fallback name for unknown services."""
+        if not domain:
             return "Unknown Service"
+
+        labels = domain.split(".")
+
+        # Use the first label for ordinary unknown domains.
+        # If a known brand appears at the start of a deceptive
+        # domain, avoid presenting it as that known service.
+        if (
+            len(labels) >= 3
+            and labels[0] in {
+                known.split(".")[0]
+                for known in self.SERVICE_MAP
+            }
+            and ".".join(labels[:2]) in self.SERVICE_MAP
+        ):
+            name = " ".join(labels).replace("-", " ").replace("_", " ")
+        else:
+            name = labels[0]
 
         return name.replace("-", " ").replace("_", " ").title()

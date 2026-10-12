@@ -1,5 +1,7 @@
+
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any
 
@@ -18,84 +20,91 @@ class GmailProvider(DiscoverySource):
         self,
         credentials_path: str = "credentials.json",
         token_path: str = "token.json",
-        max_results: int = 100,
+        max_results: int = 20,
     ) -> None:
         self.credentials_path = Path(credentials_path)
         self.token_path = Path(token_path)
-        self.max_results = max_results
+        self.max_results = max(1, min(max_results, 100))
 
     def fetch_records(self) -> list[dict[str, Any]]:
-        service = self._authenticate()
-
-        response = (
-            service.users()
-            .messages()
-            .list(
-                userId="me",
-                maxResults=self.max_results,
-            )
-            .execute()
-        )
-
-        records: list[dict[str, Any]] = []
-
-        for message in response.get("messages", []):
-            full_message = (
-                service.users()
-                .messages()
-                .get(
-                    userId="me",
-                    id=message["id"],
-                    format="full",
-                )
-                .execute()
-            )
-
-            records.append(
-                self._convert_message(full_message)
-            )
-
-        return records
+        return self._fetch_records()
 
     def fetch_discovery_records(
         self,
         query: str = "",
     ) -> list[dict[str, Any]]:
-        """
-        Fetch Gmail messages relevant to account discovery.
-        """
+        """Fetch a bounded set of messages matching a Gmail query."""
+        return self._fetch_records(query=query or None)
+
+    def _fetch_records(
+        self,
+        query: str | None = None,
+    ) -> list[dict[str, Any]]:
         service = self._authenticate()
 
-        response = (
-            service.users()
-            .messages()
-            .list(
-                userId="me",
-                q=query,
-                maxResults=self.max_results,
+        arguments: dict[str, Any] = {
+            "userId": "me",
+            "maxResults": self.max_results,
+        }
+        if query:
+            arguments["q"] = query
+
+        response = self._execute_with_retry(
+            lambda: (
+                service.users()
+                .messages()
+                .list(**arguments)
+                .execute()
             )
-            .execute()
         )
 
         records: list[dict[str, Any]] = []
 
         for message in response.get("messages", []):
-            full_message = (
-                service.users()
-                .messages()
-                .get(
-                    userId="me",
-                    id=message["id"],
-                    format="full",
-                )
-                .execute()
-            )
+            message_id = message.get("id")
+            if not message_id:
+                continue
 
-            records.append(
-                self._convert_message(full_message)
+            full_message = self._execute_with_retry(
+                lambda message_id=message_id: (
+                    service.users()
+                    .messages()
+                    .get(
+                        userId="me",
+                        id=message_id,
+                        format="full",
+                    )
+                    .execute()
+                )
             )
+            records.append(self._convert_message(full_message))
 
         return records
+
+    @staticmethod
+    def _execute_with_retry(request: Any) -> Any:
+        """Retry transient rate-limit errors with bounded backoff."""
+        from googleapiclient.errors import HttpError
+
+        for attempt in range(4):
+            try:
+                return request()
+            except HttpError as exc:
+                status = getattr(exc.resp, "status", None)
+                content = str(exc.content).lower()
+
+                retryable = (
+                    status == 429
+                    or "ratelimitexceeded" in content
+                    or "userratelimitexceeded" in content
+                )
+
+                if not retryable or attempt == 3:
+                    raise
+
+                time.sleep(2**attempt)
+
+        raise RuntimeError("Gmail request failed after retries.")
 
     def _authenticate(self) -> Any:
         from google.auth.transport.requests import Request
@@ -129,10 +138,7 @@ class GmailProvider(DiscoverySource):
                     str(self.credentials_path),
                     self.SCOPES,
                 )
-
-                credentials = flow.run_local_server(
-                    port=0
-                )
+                credentials = flow.run_local_server(port=0)
 
             self.token_path.write_text(
                 credentials.to_json(),
@@ -154,33 +160,47 @@ class GmailProvider(DiscoverySource):
         headers = {
             header["name"].lower(): header["value"]
             for header in payload.get("headers", [])
+            if "name" in header and "value" in header
         }
+
+        timestamp = headers.get("date", "")
+        internal_date = message.get("internalDate")
+
+        if internal_date:
+            try:
+                from datetime import datetime, timezone
+
+                timestamp = datetime.fromtimestamp(
+                    int(internal_date) / 1000,
+                    tz=timezone.utc,
+                ).isoformat()
+            except (ValueError, TypeError, OSError):
+                pass
 
         return {
             "id": message.get("id"),
             "thread_id": message.get("threadId"),
             "sender": headers.get("from", ""),
             "subject": headers.get("subject", ""),
-            "timestamp": headers.get("date", ""),
+            "timestamp": timestamp,
             "body": GmailProvider._extract_body(payload),
         }
 
     @staticmethod
-    def _extract_body(
-        payload: dict[str, Any],
-    ) -> str:
-        body = payload.get("body", {})
-        data = body.get("data")
+    def _extract_body(payload: dict[str, Any]) -> str:
+        """Recursively extract plain-text content from MIME parts."""
+        mime_type = payload.get("mimeType", "")
+        body_data = payload.get("body", {}).get("data")
 
-        if data:
-            return decode_gmail_body(data)
+        if mime_type == "text/plain" and body_data:
+            return decode_gmail_body(body_data)
 
         for part in payload.get("parts", []):
-            if part.get("mimeType") == "text/plain":
-                part_body = part.get("body", {})
-                data = part_body.get("data")
+            text = GmailProvider._extract_body(part)
+            if text:
+                return text
 
-                if data:
-                    return decode_gmail_body(data)
+        if body_data and not payload.get("parts"):
+            return decode_gmail_body(body_data)
 
         return ""

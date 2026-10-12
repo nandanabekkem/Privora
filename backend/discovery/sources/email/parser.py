@@ -1,5 +1,6 @@
 import re
-from datetime import datetime
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any, Dict, List, Optional
 
 from ...core.constants import (
@@ -135,23 +136,35 @@ class EmailParser:
 
         return None
 
+    
     def _parse_timestamp(
         self,
         value: Any,
     ) -> Optional[datetime]:
-        """
-        Convert supported timestamp formats into datetime objects.
-        """
-        if isinstance(value, datetime):
-            return value
-
+        """Parse ISO and RFC-formatted timestamps consistently."""
         if not value:
             return None
 
-        if isinstance(value, str):
-            try:
-                return datetime.fromisoformat(value)
-            except ValueError:
-                return None
+        parsed: Optional[datetime] = None
 
-        return None
+        if isinstance(value, datetime):
+            parsed = value
+        elif isinstance(value, str):
+            try:
+                parsed = datetime.fromisoformat(
+                    value.replace("Z", "+00:00")
+                )
+            except ValueError:
+                try:
+                    parsed = parsedate_to_datetime(value)
+                except (ValueError, TypeError, OverflowError):
+                    return None
+
+        if parsed is None:
+            return None
+
+        # Keep timestamps compatible with existing naive-datetime comparisons.
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+
+        return parsed

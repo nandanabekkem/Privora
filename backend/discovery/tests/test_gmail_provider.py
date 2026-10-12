@@ -80,7 +80,7 @@ def test_gmail_discovery_query(monkeypatch) -> None:
         def list(self, **kwargs):
             assert kwargs["userId"] == "me"
             assert "welcome" in kwargs["q"]
-            assert kwargs["maxResults"] == 100
+            assert kwargs["maxResults"] == 20
 
             class FakeRequest:
                 def execute(self):
