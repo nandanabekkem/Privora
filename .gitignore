@@ -138,6 +138,7 @@ __marimo__/
 # Streamlit secrets
 .streamlit/secrets.toml
 
+<<<<<<< HEAD
 # Privora local development artifacts
 backend/.venv/
 backend/.pytest_cache/
@@ -148,3 +149,12 @@ backend/alembic_backup/
 .plugins/
 .opencode-skills/
 ```
+=======
+
+.env
+.env.*
+!.env.example
+
+credentials.json
+token.json
+>>>>>>> origin/discovery
