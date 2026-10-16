@@ -1,7 +1,26 @@
 import { FormEvent, ReactNode, useEffect, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
+import { apiGet } from "./api"
 
 type View = "home" | "login" | "signup" | "onboarding" | "dashboard"
+
+type DataMapResponse = {
+  user_id: number
+  account_count: number
+  accounts: {
+    account_id: number
+    service: string
+    website: string | null
+    status: string
+    last_activity: string | null
+    data_records: {
+      category: string
+      description: string | null
+    }[]
+    data_record_count: number
+  }[]
+}
+
 
 const Arrow = ({ diagonal = false }: { diagonal?: boolean }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -833,6 +852,39 @@ const Onboarding = ({ navigate }: { navigate: (view: View) => void }) => {
 
 const Dashboard = ({ navigate }: { navigate: (view: View) => void }) => {
   const [tab, setTab] = useState("Overview")
+    const [dataMap, setDataMap] = useState<DataMapResponse | null>(null)
+  const [dataMapLoading, setDataMapLoading] = useState(true)
+  const [dataMapError, setDataMapError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    apiGet<DataMapResponse>("/data-map/1")
+      .then((result) => {
+        if (!cancelled) {
+          setDataMap(result)
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setDataMapError(
+            error instanceof Error
+              ? error.message
+              : "Unable to load personal data.",
+          )
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setDataMapLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState("All")
   const [reviewing, setReviewing] = useState(false)
@@ -1122,61 +1174,95 @@ const Dashboard = ({ navigate }: { navigate: (view: View) => void }) => {
           </motion.section>
         )}
 
-        {tab === "Personal Data" && (
+               {tab === "Personal Data" && (
           <motion.div
             className="data-cards"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
             <div className="demo-banner">
-              <strong>IMPORTANT</strong>
+              <strong>DATABASE DATA</strong>
               <span>
-                “Supplied” means entered in this demo. “Potential” is an
-                inference to review, not a confirmed fact.
+                These records come from Privora's database. Example
+                descriptions are not proof that external services were checked.
               </span>
             </div>
-            {[
-              [
-                "Contact information",
-                "Email address",
-                "Supplied by you",
-                "Phone number",
-                "Potential — unconfirmed",
-              ],
-              [
-                "Career & resume",
-                "Resume file",
-                "Supplied by you",
-                "Employment history",
-                "Potential — unconfirmed",
-              ],
-              [
-                "Profile details",
-                "Display name",
-                "Supplied by you",
-                "Public biography",
-                "Potential — unconfirmed",
-              ],
-              [
-                "Documents",
-                "Application PDF",
-                "Supplied by you",
-                "Archived uploads",
-                "Potential — unconfirmed",
-              ],
-            ].map(([title, one, oneStatus, two, twoStatus], i) => (
-              <section className="data-card" key={title}>
-                <span>0{i + 1}</span>
-                <h2>{title}</h2>
+
+            {dataMapLoading && (
+              <p role="status">Loading personal data records…</p>
+            )}
+
+            {dataMapError && (
+              <p role="alert">
+                Unable to load personal data: {dataMapError}
+              </p>
+            )}
+
+            {!dataMapLoading &&
+              !dataMapError &&
+              dataMap?.accounts.length === 0 && (
+                <p>No account records were found for this user.</p>
+              )}
+
+            {dataMap?.accounts.map((account, index) => (
+              <section className="data-card" key={account.account_id}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+
+                <h2>{account.service}</h2>
+
                 <div>
                   <p>
-                    {one}
-                    <em>{oneStatus}</em>
+                    Account status
+                    <em>{account.status}</em>
                   </p>
+
                   <p>
-                    {two}
-                    <em>{twoStatus}</em>
+                    Website
+                    <em>
+                      {account.website ? (
+                        <a
+                          href={account.website}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {account.website}
+                        </a>
+                      ) : (
+                        "Not available"
+                      )}
+                    </em>
                   </p>
+
+                  <p>
+                    Last activity
+                    <em>
+                      {account.last_activity
+                        ? new Date(account.last_activity).toLocaleString()
+                        : "Not recorded"}
+                    </em>
+                  </p>
+
+                  <p>
+                    Recorded data categories
+                    <em>{account.data_record_count}</em>
+                  </p>
+
+                  {account.data_records.length > 0 ? (
+                    account.data_records.map((record, recordIndex) => (
+                      <p key={`${account.account_id}-${recordIndex}`}>
+                        {record.category}
+                        <em>
+                          {record.description ??
+                            "No description recorded"}
+                        </em>
+                      </p>
+                    ))
+                  ) : (
+                    <p>
+                      No data categories recorded
+                      <em>Database record</em>
+                    </p>
+                  )}
                 </div>
               </section>
             ))}
