@@ -101,9 +101,14 @@ def create_user_policy(
         policy_text=payload.policy_text,
     )
 
-    db.add(policy)
-    db.commit()
-    db.refresh(policy)
+
+    try:
+        db.add(policy)
+        db.commit()
+        db.refresh(policy)
+    except Exception:
+        db.rollback()
+        raise
 
     return {
         "message": "Privacy policy created successfully",

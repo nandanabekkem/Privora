@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from app.api import audit_logs
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.services import router as services_router
@@ -36,6 +37,7 @@ app.include_router(dormant_router)
 app.include_router(rules_router)
 app.include_router(policies_router)
 app.include_router(privacy_actions_router)
+app.include_router(audit_logs.router)
 app.include_router(discovery_router)
 
 

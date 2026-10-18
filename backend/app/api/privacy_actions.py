@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import Account, PrivacyAction, User
+from app.models import Account, AuditLog, PrivacyAction, User
 
 
 router = APIRouter(
@@ -87,6 +87,20 @@ def create_privacy_action(
 
     try:
         db.add(action)
+        db.flush()  # Get the action ID before creating its audit entry.
+
+        db.add(
+            AuditLog(
+                user_id=user_id,
+                privacy_action_id=action.id,
+                event_type="ACTION_CREATED",
+                details=(
+                    f"Privacy action {action.id} was created "
+                    "and is pending user approval."
+                ),
+            )
+        )
+
         db.commit()
         db.refresh(action)
     except Exception:
@@ -180,7 +194,19 @@ def review_privacy_action(
     )
     action.reviewed_at = datetime.now(timezone.utc)
 
+
     try:
+        db.add(
+            AuditLog(
+                user_id=user_id,
+                privacy_action_id=action.id,
+                event_type=f"ACTION_{decision}",
+                details=(
+                    f"Privacy action {action.id} was "
+                    f"{action.status.lower()} by the user."
+                ),
+            )
+        )
         db.commit()
         db.refresh(action)
     except Exception:

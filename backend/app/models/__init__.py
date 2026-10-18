@@ -1,5 +1,6 @@
 from app.models.base import (
     Account,
+    AuditLog,
     DataRecord,
     Policy,
     PrivacyAction,
@@ -14,4 +15,5 @@ __all__ = [
     "DataRecord",
     "Policy",
     "PrivacyAction",
+    "AuditLog",
 ]

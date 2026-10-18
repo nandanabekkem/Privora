@@ -1,6 +1,6 @@
 import { FormEvent, ReactNode, useEffect, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { apiGet } from "./api"
+import { apiGet, apiPost } from "./api"
 
 type View = "home" | "login" | "signup" | "onboarding" | "dashboard"
 
@@ -19,6 +19,77 @@ type DataMapResponse = {
     }[]
     data_record_count: number
   }[]
+}
+
+type AuditLogsResponse = {
+  user_id: number
+  count: number
+  logs: {
+    id: number
+    privacy_action_id: number | null
+    event_type: string
+    details: string
+    created_at: string
+  }[]
+}
+
+
+type PrivacyActionsResponse = {
+  user_id: number
+  count: number
+  actions: {
+    id: number
+    account_id: number
+    action_type: string
+    description: string
+    status: string
+    requires_approval: boolean
+    created_at: string
+    reviewed_at: string | null
+  }[]
+}
+
+
+type RulesResponse = {
+  user_id: number
+  days_threshold: number
+  saved_policy_count: number
+  account_count: number
+  recommendation_count: number
+  recommendations: {
+    account_id: number
+    service: string
+    recommendation: "KEEP" | "REVIEW"
+    reason: string
+    days_threshold: number
+    applied_policy_count: number
+    requires_user_approval: boolean
+  }[]
+  note: string
+}
+
+type Recommendation = {
+  id: number
+  accountId: number
+  actionId: number | null
+  status: string
+  title: string
+  account: string
+  why: string
+  next: string
+}
+
+
+type CreateActionResponse = {
+  id: number
+  user_id: number
+  account_id: number
+  action_type: string
+  description: string
+  status: string
+  requires_approval: boolean
+  created_at: string
+  message: string
 }
 
 
@@ -852,12 +923,26 @@ const Onboarding = ({ navigate }: { navigate: (view: View) => void }) => {
 
 const Dashboard = ({ navigate }: { navigate: (view: View) => void }) => {
   const [tab, setTab] = useState("Overview")
-    const [dataMap, setDataMap] = useState<DataMapResponse | null>(null)
+
+  const [dataMap, setDataMap] = useState<DataMapResponse | null>(null)
   const [dataMapLoading, setDataMapLoading] = useState(true)
   const [dataMapError, setDataMapError] = useState<string | null>(null)
+  const [rules, setRules] = useState<RulesResponse | null>(null)
+  const [rulesLoading, setRulesLoading] = useState(true)
+  const [rulesError, setRulesError] = useState<string | null>(null)
 
+  // ✅ PASTE THE NEW STATE HERE
+  const [auditLogs, setAuditLogs] =
+    useState<AuditLogsResponse | null>(null)
+  const [auditLogsLoading, setAuditLogsLoading] = useState(true)
+  const [auditLogsError, setAuditLogsError] =
+    useState<string | null>(null)
+
+  // Existing Personal Data useEffect starts here
   useEffect(() => {
     let cancelled = false
+
+    // Keep your existing dataMap API code here...
 
     apiGet<DataMapResponse>("/data-map/1")
       .then((result) => {
@@ -885,35 +970,151 @@ const Dashboard = ({ navigate }: { navigate: (view: View) => void }) => {
     }
   }, [])
 
+useEffect(() => {
+  let cancelled = false
+
+  apiGet<AuditLogsResponse>("/audit-logs/1")
+    .then((result) => {
+      if (!cancelled) {
+        setAuditLogs(result)
+      }
+    })
+    .catch((error: unknown) => {
+      if (!cancelled) {
+        setAuditLogsError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load activity history."
+        )
+      }
+    })
+    .finally(() => {
+      if (!cancelled) {
+        setAuditLogsLoading(false)
+      }
+    })
+
+  return () => {
+    cancelled = true
+  }
+}, [])
+
+useEffect(() => {
+  let cancelled = false
+
+  apiGet<RulesResponse>("/rules/1")
+    .then((result) => {
+      if (!cancelled) {
+        setRules(result)
+      }
+    })
+    .catch((error: unknown) => {
+      if (!cancelled) {
+        setRulesError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load backend recommendations.",
+        )
+      }
+    })
+    .finally(() => {
+      if (!cancelled) {
+        setRulesLoading(false)
+      }
+    })
+
+  return () => {
+    cancelled = true
+  }
+}, [])
+
+useEffect(() => {
+  let cancelled = false
+
+  const loadPrivacyActions = async () => {
+    try {
+      const response = await apiGet<PrivacyActionsResponse>(
+        "/privacy-actions/1",
+      )
+
+      if (cancelled) return
+
+      // The backend returns newest actions first.
+      const latestByAccount = new Map<
+        number,
+        PrivacyActionsResponse["actions"][number]
+      >()
+
+      for (const action of response.actions) {
+        if (!latestByAccount.has(action.account_id)) {
+          latestByAccount.set(action.account_id, action)
+        }
+      }
+
+      const currentRules = await apiGet<RulesResponse>("/rules/1")
+
+if (cancelled) return
+
+setRules(currentRules)
+
+const mappedRecommendations: Recommendation[] =
+  currentRules.recommendations.map((rule) => {
+    const action = latestByAccount.get(rule.account_id)
+
+    const statusMap: Record<string, string> = {
+      PENDING: "Pending approval",
+      APPROVED: "Approved — not executed",
+      REJECTED: "Rejected",
+    }
+
+    return {
+      id: rule.account_id,
+      accountId: rule.account_id,
+      actionId: action?.id ?? null,
+      status: action
+        ? statusMap[action.status] ?? "Proposed"
+        : "Proposed",
+      title:
+        rule.recommendation === "REVIEW"
+          ? `Review ${rule.service} account`
+          : `Keep ${rule.service} account`,
+      account: rule.service,
+      why: rule.reason,
+      next: rule.requires_user_approval
+        ? "Review this recommendation and approve any privacy action before it is carried out."
+        : "Review this recommendation and choose the next step.",
+    }
+  })
+
+setRecommendations(mappedRecommendations)
+    } catch (error) {
+      if (!cancelled) {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "Could not load existing privacy actions.",
+        )
+      }
+    }
+  }
+
+  void loadPrivacyActions()
+
+  return () => {
+    cancelled = true
+  }
+}, [])
+
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState("All")
   const [reviewing, setReviewing] = useState(false)
-  const [recommendations, setRecommendations] = useState([
-    {
-      id: 1,
-      status: "Proposed",
-      title: "Review a dormant file-storage account",
-      account: "Dropbox · Account",
-      why: "You marked this demo account as inactive and potentially containing uploaded documents.",
-      next: "Review its account settings and available deactivation options.",
-    },
-    {
-      id: 2,
-      status: "Proposed",
-      title: "Check public profile visibility",
-      account: "LinkedIn · Profile details",
-      why: "The demo profile is marked as potentially visible beyond your intended audience.",
-      next: "Review profile visibility controls before deciding whether to change them.",
-    },
-    {
-      id: 3,
-      status: "Approved — not executed",
-      title: "Review marketing preferences",
-      account: "CourseHub · Contact information",
-      why: "Optional communications may be enabled for this demo account.",
-      next: "Open the service preferences. Approval does not mean the change has been executed.",
-    },
-  ])
+  const [recommendations, setRecommendations] =
+  useState<Recommendation[]>([])
+
+const [actionError, setActionError] = useState<string | null>(null)
+const [actionMessage, setActionMessage] = useState<string | null>(null)
+const [actionBusyId, setActionBusyId] = useState<number | null>(null)
+
   const accounts = [
     {
       icon: "J",
@@ -953,10 +1154,101 @@ const Dashboard = ({ navigate }: { navigate: (view: View) => void }) => {
       (filter === "All" || account.status === filter) &&
       account.name.toLowerCase().includes(search.toLowerCase()),
   )
-  const setDecision = (id: number, status: string) =>
-    setRecommendations((items) =>
-      items.map((item) => (item.id === id ? { ...item, status } : item)),
+
+const setDecision = async (id: number, status: string) => {
+  const item = recommendations.find((rec) => rec.id === id)
+
+  if (!item || actionBusyId !== null) return
+
+  // Prevent duplicate decisions on completed recommendations.
+  if (
+    item.status === "Approved — not executed" ||
+    item.status === "Rejected"
+  ) {
+    setActionError(null)
+    setActionMessage("This recommendation already has a final decision.")
+    return
+  }
+
+  setActionError(null)
+  setActionMessage(null)
+  setActionBusyId(id)
+
+  try {
+    let actionId = item.actionId
+
+    // Create a pending action if this recommendation has none.
+    if (actionId === null) {
+      const created = await apiPost<CreateActionResponse>(
+        "/privacy-actions/1",
+        {
+          account_id: item.accountId,
+          action_type: "REVIEW_ACCOUNT",
+          description: item.title,
+        },
+      )
+
+      actionId = created.id
+
+      setRecommendations((items) =>
+        items.map((rec) =>
+          rec.id === id
+            ? { ...rec, actionId, status: "Pending approval" }
+            : rec,
+        ),
+      )
+
+      setActionMessage(
+        `Action #${actionId} created and awaiting your decision.`,
+      )
+
+      // Decide only after the pending action has been created.
+      return
+    }
+
+    // Reviewing keeps the action pending.
+    if (status === "Under review") {
+      setActionMessage(
+        `Action #${actionId} is awaiting your decision.`,
+      )
+      return
+    }
+
+    const decision =
+      status === "Rejected" ? "REJECT" : "APPROVE"
+
+    await apiPost<unknown>(
+      `/privacy-actions/1/${actionId}/review`,
+      { decision },
     )
+
+    const finalStatus =
+      decision === "REJECT"
+        ? "Rejected"
+        : "Approved — not executed"
+
+    setRecommendations((items) =>
+      items.map((rec) =>
+        rec.id === id
+          ? { ...rec, actionId, status: finalStatus }
+          : rec,
+      ),
+    )
+
+    setActionMessage(
+      `Action #${actionId} recorded as ${decision}. No external account changes were made.`,
+    )
+  } catch (error) {
+    setActionError(
+      error instanceof Error
+        ? error.message
+        : "Something went wrong.",
+    )
+  } finally {
+    setActionBusyId(null)
+  }
+}
+
   const nav = [
     "Overview",
     "My Accounts",
@@ -1096,6 +1388,8 @@ const Dashboard = ({ navigate }: { navigate: (view: View) => void }) => {
               <RecommendationPanel
                 items={recommendations}
                 setDecision={setDecision}
+                actionError={actionError}
+                actionMessage={actionMessage}
               />
             </div>
           </motion.div>
@@ -1270,12 +1564,14 @@ const Dashboard = ({ navigate }: { navigate: (view: View) => void }) => {
         )}
 
         {tab === "AI Recommendations" && (
-          <RecommendationPanel
-            items={recommendations}
-            setDecision={setDecision}
-            standalone
-          />
-        )}
+  <RecommendationPanel
+    items={recommendations}
+    setDecision={setDecision}
+    actionError={actionError}
+    actionMessage={actionMessage}
+    standalone
+  />
+)}
 
         {tab === "Activity History" && (
           <motion.section
@@ -1284,42 +1580,39 @@ const Dashboard = ({ navigate }: { navigate: (view: View) => void }) => {
             animate={{ opacity: 1 }}
           >
             <div className="demo-banner">
-              <strong>DEMO HISTORY</strong>
-              <span>Illustrative events only.</span>
+              <strong>AUDIT LOG</strong>
+<span>Recorded privacy-action events.</span>
             </div>
-            {[
-              [
-                "18 MAY / 14:32",
-                "DECISION",
-                "Marketing preference review approved",
-                "Approved — not executed",
-              ],
-              [
-                "18 MAY / 13:10",
-                "REVIEW",
-                "CourseHub account details reviewed",
-                "Reviewed",
-              ],
-              [
-                "17 MAY / 09:45",
-                "ACCOUNT",
-                "Hackathon Portal added manually",
-                "Added",
-              ],
-              [
-                "16 MAY / 16:22",
-                "STATUS",
-                "Sample removal request status updated",
-                "Confirmed complete — demo",
-              ],
-            ].map(([date, type, title, status]) => (
-              <div className="history-row" key={title}>
-                <span>{date}</span>
-                <i>{type}</i>
-                <strong>{title}</strong>
-                <em>{status}</em>
-              </div>
-            ))}
+
+{auditLogsLoading && (
+  <p role="status">Loading activity history…</p>
+)}
+
+{auditLogsError && (
+  <p role="alert">
+    Unable to load activity history: {auditLogsError}
+  </p>
+)}
+
+{!auditLogsLoading &&
+  !auditLogsError &&
+  auditLogs?.logs.length === 0 && (
+    <p>No audit events recorded yet.</p>
+  )}
+
+{auditLogs?.logs.map((log) => (
+  <div className="history-row" key={log.id}>
+    <span>{new Date(log.created_at).toLocaleString()}</span>
+    <i>{log.event_type.split("_").join(" ")}</i>
+    <strong>{log.details}</strong>
+    <em>
+      {log.privacy_action_id
+        ? `Action #${log.privacy_action_id}`
+        : "General event"}
+    </em>
+  </div>
+))}
+
           </motion.section>
         )}
 
@@ -1420,24 +1713,22 @@ const AccountRow = ({
     </div>
   )
 
-type Recommendation = {
-  id: number
-  status: string
-  title: string
-  account: string
-  why: string
-  next: string
-}
+
 
 const RecommendationPanel = ({
   items,
   setDecision,
   standalone = false,
+  actionError,
+  actionMessage,
 }: {
   items: Recommendation[]
-  setDecision: (id: number, status: string) => void
+  setDecision: (id: number, status: string) => Promise<void>
   standalone?: boolean
+  actionError?: string | null
+  actionMessage?: string | null
 }) => (
+
   <motion.section
     className={`recommendations ${
       standalone ? "recommendations--standalone" : ""
@@ -1452,6 +1743,8 @@ const RecommendationPanel = ({
       </div>
       <span className="demo-tag">NOT EXECUTED</span>
     </div>
+    {actionError && <p role="alert">{actionError}</p>}
+    {actionMessage && <p role="status">{actionMessage}</p>}
     {items.map((item) => (
       <motion.div className="recommendation" key={item.id} layout>
         <span className="risk">AI</span>
