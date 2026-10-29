@@ -1,94 +1,8 @@
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.main import app
-from app.core.database import Base, get_db
-from app.models import User, Service, Account
 
 
-# Separate in-memory database for privacy action tests
-test_engine = create_engine(
-    "sqlite://",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-
-TestingSessionLocal = sessionmaker(
-    bind=test_engine,
-    autoflush=False,
-    autocommit=False,
-)
-
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-@pytest.fixture
-def client():
-    previous_override = app.dependency_overrides.get(get_db)
-
-    Base.metadata.drop_all(bind=test_engine)
-    Base.metadata.create_all(bind=test_engine)
-    app.dependency_overrides[get_db] = override_get_db
-
-    try:
-        with TestClient(app) as test_client:
-            yield test_client
-    finally:
-        if previous_override is None:
-            app.dependency_overrides.pop(get_db, None)
-        else:
-            app.dependency_overrides[get_db] = previous_override
-
-        Base.metadata.drop_all(bind=test_engine)
-
-
-def setup_test_data():
-    db = TestingSessionLocal()
-
-    try:
-        user = User(
-            name="Test User",
-            email="test@privora.test",
-        )
-
-        service = Service(
-            name="Test Service",
-            website="https://example.com",
-        )
-
-        db.add_all([user, service])
-        db.commit()
-
-        db.refresh(user)
-        db.refresh(service)
-
-        account = Account(
-            user_id=user.id,
-            service_id=service.id,
-            status="ACTIVE",
-        )
-
-        db.add(account)
-        db.commit()
-        db.refresh(account)
-
-        return user.id, account.id
-
-    finally:
-        db.close()
-
-
-def create_test_action(client, user_id, account_id):
+def create_test_action(client, user_id=1, account_id=1):
     return client.post(
         f"/privacy-actions/{user_id}",
         json={
@@ -100,9 +14,7 @@ def create_test_action(client, user_id, account_id):
 
 
 def test_create_privacy_action(client):
-    user_id, account_id = setup_test_data()
-
-    response = create_test_action(client, user_id, account_id)
+    response = create_test_action(client)
 
     assert response.status_code == 201
     assert response.json()["status"] == "PENDING"
@@ -110,12 +22,10 @@ def test_create_privacy_action(client):
 
 
 def test_list_privacy_actions(client):
-    user_id, account_id = setup_test_data()
-
-    create_response = create_test_action(client, user_id, account_id)
+    create_response = create_test_action(client)
     assert create_response.status_code == 201
 
-    response = client.get(f"/privacy-actions/{user_id}")
+    response = client.get("/privacy-actions/1")
 
     assert response.status_code == 200
     assert response.json()["count"] == 1
@@ -123,15 +33,12 @@ def test_list_privacy_actions(client):
 
 
 def test_reject_privacy_action(client):
-    user_id, account_id = setup_test_data()
-
-    create_response = create_test_action(client, user_id, account_id)
+    create_response = create_test_action(client)
     assert create_response.status_code == 201
 
     action_id = create_response.json()["id"]
-
     response = client.post(
-        f"/privacy-actions/{user_id}/{action_id}/review",
+        f"/privacy-actions/1/{action_id}/review",
         json={"decision": "REJECT"},
     )
 
@@ -140,15 +47,12 @@ def test_reject_privacy_action(client):
 
 
 def test_approve_privacy_action(client):
-    user_id, account_id = setup_test_data()
-
-    create_response = create_test_action(client, user_id, account_id)
+    create_response = create_test_action(client)
     assert create_response.status_code == 201
 
     action_id = create_response.json()["id"]
-
     response = client.post(
-        f"/privacy-actions/{user_id}/{action_id}/review",
+        f"/privacy-actions/1/{action_id}/review",
         json={"decision": "APPROVE"},
     )
 
@@ -158,15 +62,12 @@ def test_approve_privacy_action(client):
 
 
 def test_invalid_review_decision(client):
-    user_id, account_id = setup_test_data()
-
-    create_response = create_test_action(client, user_id, account_id)
+    create_response = create_test_action(client)
     assert create_response.status_code == 201
 
     action_id = create_response.json()["id"]
-
     response = client.post(
-        f"/privacy-actions/{user_id}/{action_id}/review",
+        f"/privacy-actions/1/{action_id}/review",
         json={"decision": "MAYBE"},
     )
 
@@ -181,31 +82,24 @@ def test_invalid_review_decision(client):
     ],
 )
 def test_blank_action_fields_are_rejected(client, field, value):
-    user_id, account_id = setup_test_data()
-
     payload = {
-        "account_id": account_id,
+        "account_id": 1,
         "action_type": "REVIEW",
         "description": "Review this account's stored data",
     }
     payload[field] = value
 
-    response = client.post(
-        f"/privacy-actions/{user_id}",
-        json=payload,
-    )
+    response = client.post("/privacy-actions/1", json=payload)
 
     assert response.status_code == 422
 
 
 def test_action_cannot_be_reviewed_twice(client):
-    user_id, account_id = setup_test_data()
-
-    create_response = create_test_action(client, user_id, account_id)
+    create_response = create_test_action(client)
     assert create_response.status_code == 201
 
     action_id = create_response.json()["id"]
-    review_url = f"/privacy-actions/{user_id}/{action_id}/review"
+    review_url = f"/privacy-actions/1/{action_id}/review"
 
     first_response = client.post(
         review_url,
@@ -225,10 +119,8 @@ def test_action_cannot_be_reviewed_twice(client):
 
 
 def test_privacy_action_for_wrong_account(client):
-    user_id, _ = setup_test_data()
-
     response = client.post(
-        f"/privacy-actions/{user_id}",
+        "/privacy-actions/1",
         json={
             "account_id": 9999,
             "action_type": "REVIEW",

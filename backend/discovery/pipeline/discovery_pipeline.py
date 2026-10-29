@@ -216,14 +216,18 @@ class DiscoveryPipeline:
 
     @classmethod
     def from_gmail(
-    cls,
-    credentials_path: str = "credentials.json",
-    token_path: str = "token.json",
-) -> "DiscoveryPipeline":
-      email_provider = GmailProvider(
-        credentials_path=credentials_path,
-        token_path=token_path,
-    )
-      return cls(
-        email_provider=email_provider,
-    )
+        cls,
+        credentials_path: str = "credentials.json",
+        token_path: str = "token.json",
+        max_results: int = 20,
+        credentials: Any | None = None,
+        save_credentials: Any | None = None,
+    ) -> "DiscoveryPipeline":
+        email_provider = GmailProvider(
+            credentials_path=credentials_path,
+            token_path=token_path,
+            max_results=max_results,
+            credentials=credentials,
+            save_credentials=save_credentials,
+        )
+        return cls(email_provider=email_provider)

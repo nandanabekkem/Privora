@@ -1,12 +1,13 @@
-```gitignore
-# Frontend / Node.js
+# Frontend dependencies and generated output
 node_modules/
 dist/
 build/
 .cache/
 .vite/
-vite.config.*.timestamp-*
+.firebase/
+coverage/
 *.tsbuildinfo
+vite.config.*.timestamp-*
 *-debug.log*
 logs/
 *.log
@@ -14,147 +15,139 @@ logs/
 .tmp-*
 /.figma/design-context/
 
-# Python / Flask
-instance/
-.webassets-cache
+# Python bytecode, environments, test output, and packaged distributions
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+build/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.py.cover
+*.lcov
+.hypothesis/
+.pytest_cache/
+cover/
+.venv/
+backend/.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+backend/**/__pycache__/
+backend/alembic_backup/
 
-# Scrapy
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-# .python-version
-
-# pipenv
-# Pipfile.lock
-
-# uv
-# uv.lock
-
-# poetry
-# poetry.lock
-# poetry.toml
-
-# pdm
-.pdm-python
-.pdm-build/
-# pdm.lock
-# pdm.toml
-
-# pixi
-.pixi/*
-!.pixi/config.toml
-
-# PEP 582
-__pypackages__/
-
-# Celery
-celerybeat-schedule*
-celerybeat.pid
-
-# Redis
-*.rdb
-*.aof
-*.pid
-
-# RabbitMQ
-mnesia/
-rabbitmq/
-rabbitmq-data/
-
-# ActiveMQ
-activemq-data/
-
-# SageMath
-*.sage.py
-
-# Python environments and secrets
+# Local environment files. Keep documented templates trackable.
 .env
 .env.*
 !.env.example
 .envrc
-.venv/
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+/backend/.env
+/backend/.env.*
+!/backend/.env.example
 
-# Spyder
-.spyderproject
-.spyproject
+# Credential exports, OAuth/service-account files, and token dumps
+credentials.json
+token.json
+**/*credential*.json
+**/*service-account*.json
+**/*service_account*.json
+**/*oauth*client*.json
+**/*secret*.json
+**/*credential*.txt
+**/*secret*.txt
+**/*api-key*.*
+**/*api_key*.*
+**/*apikey*.*
+**/*.token
+**/*token*.txt
+**/*access-token*.*
+**/*access_token*.*
+**/*refresh-token*.*
+**/*refresh_token*.*
 
-# Rope
-.ropeproject
+# Private keys and exported key stores
+*.pem
+*.key
+*.p12
+*.pfx
+*.p8
+*.jks
+*.keystore
 
-# mkdocs / Zensical
-/site
+# Local databases and journals
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.sqlite-journal
 
-# mypy
+# Python tool and IDE state
+instance/
+.webassets-cache/
+.scrapy/
+docs/_build/
+.pybuilder/
+target/
+.ipynb_checkpoints/
+profile_default/
+ipython_config.py
+.pdm-python
+.pdm-build/
+.pixi/*
+!.pixi/config.toml
+__pypackages__/
+celerybeat-schedule*
+celerybeat.pid
+*.rdb
+*.aof
+*.pid
+mnesia/
+rabbitmq/
+rabbitmq-data/
+activemq-data/
+*.sage.py
+.spyderproject/
+.spyproject/
+.ropeproject/
+/site/
 .mypy_cache/
 .dmypy.json
 dmypy.json
-
-# Pyre
 .pyre/
-
-# pytype
-.pytype/
-
-# Cython
-cython_debug/
-
-# PyCharm / IDE
-.idea/
-.vscode/
-
-# Python temporary files
-tempCodeRunnerFile.py
-
-# Ruff
 .ruff_cache/
-
-# PyPI
 .pypirc
-
-# Marimo
 marimo/_static/
 marimo/_lsp/
 __marimo__/
-
-# Streamlit secrets
 .streamlit/secrets.toml
 
-<<<<<<< HEAD
-# Privora local development artifacts
-backend/.venv/
-backend/.pytest_cache/
-backend/**/__pycache__/
-backend/alembic_backup/
-
-# Platform-managed agent state
+# Editor and platform-managed local state
+.idea/
+.vscode/
+tempCodeRunnerFile.py
 .plugins/
 .opencode-skills/
-```
-=======
-
-.env
-.env.*
-!.env.example
-
-credentials.json
-token.json
->>>>>>> origin/discovery

@@ -2,18 +2,26 @@
 from __future__ import annotations
 
 import time
+import base64
+from email.message import EmailMessage
+from email.policy import SMTP
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ..base import DiscoverySource
 from .gmail_utils import decode_gmail_body
 
 
+class GmailAuthorizationError(RuntimeError):
+    """Raised when Gmail rejects credentials that were previously granted."""
+
+
 class GmailProvider(DiscoverySource):
-    """Read-only Gmail discovery provider."""
+    """Bounded Gmail header discovery and approved send operations."""
 
     SCOPES = [
-        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/gmail.metadata",
+        "https://www.googleapis.com/auth/gmail.send",
     ]
 
     def __init__(
@@ -21,24 +29,65 @@ class GmailProvider(DiscoverySource):
         credentials_path: str = "credentials.json",
         token_path: str = "token.json",
         max_results: int = 20,
+        credentials: Any | None = None,
+        save_credentials: Callable[[Any], None] | None = None,
     ) -> None:
         self.credentials_path = Path(credentials_path)
         self.token_path = Path(token_path)
         self.max_results = max(1, min(max_results, 100))
+        self.credentials = credentials
+        self.save_credentials = save_credentials
 
     def fetch_records(self) -> list[dict[str, Any]]:
         return self._fetch_records()
+
+    def send_message(self, recipient: str, subject: str, body: str) -> dict[str, str]:
+        """Send one explicitly approved, catalog-addressed privacy request."""
+        service = self._authenticate()
+        message = EmailMessage(policy=SMTP)
+        message["To"] = recipient
+        message["Subject"] = subject
+        message.set_content(body)
+        raw = base64.urlsafe_b64encode(message.as_bytes()).decode("ascii")
+        result = self._execute_with_retry(
+            lambda: service.users().messages().send(
+                userId="me",
+                body={"raw": raw},
+            ).execute()
+        )
+        message_id = result.get("id")
+        if not message_id:
+            raise RuntimeError("Gmail did not confirm a sent message ID")
+        return {
+            "message_id": str(message_id),
+            "thread_id": str(result.get("threadId") or ""),
+        }
+
+    def fetch_thread_metadata(self, thread_id: str) -> list[dict[str, Any]]:
+        """Read headers only for a thread created by a Privora send operation."""
+        service = self._authenticate()
+        result = self._execute_with_retry(
+            lambda: service.users().threads().get(
+                userId="me",
+                id=thread_id,
+                format="metadata",
+                metadataHeaders=["From", "Date"],
+            ).execute()
+        )
+        return result.get("messages", [])
 
     def fetch_discovery_records(
         self,
         query: str = "",
     ) -> list[dict[str, Any]]:
         """Fetch a bounded set of messages matching a Gmail query."""
-        return self._fetch_records(query=query or None)
+        # gmail.metadata does not permit Gmail search queries. We scan only
+        # bounded message headers and classify from sender and subject.
+        del query
+        return self._fetch_records()
 
     def _fetch_records(
         self,
-        query: str | None = None,
     ) -> list[dict[str, Any]]:
         service = self._authenticate()
 
@@ -46,9 +95,6 @@ class GmailProvider(DiscoverySource):
             "userId": "me",
             "maxResults": self.max_results,
         }
-        if query:
-            arguments["q"] = query
-
         response = self._execute_with_retry(
             lambda: (
                 service.users()
@@ -72,7 +118,8 @@ class GmailProvider(DiscoverySource):
                     .get(
                         userId="me",
                         id=message_id,
-                        format="full",
+                        format="metadata",
+                        metadataHeaders=["From", "Subject", "Date"],
                     )
                     .execute()
                 )
@@ -93,6 +140,11 @@ class GmailProvider(DiscoverySource):
                 status = getattr(exc.resp, "status", None)
                 content = str(exc.content).lower()
 
+                if status in {401, 403}:
+                    raise GmailAuthorizationError(
+                        "Gmail rejected the current authorization or API access. Verify Gmail API setup and reconnect Gmail."
+                    ) from exc
+
                 retryable = (
                     status == 429
                     or "ratelimitexceeded" in content
@@ -107,48 +159,32 @@ class GmailProvider(DiscoverySource):
         raise RuntimeError("Gmail request failed after retries.")
 
     def _authenticate(self) -> Any:
+        from google.auth.exceptions import RefreshError
         from google.auth.transport.requests import Request
-        from google.oauth2.credentials import Credentials
-        from google_auth_oauthlib.flow import InstalledAppFlow
         from googleapiclient.discovery import build
 
-        credentials = None
-
-        if self.token_path.exists():
-            credentials = Credentials.from_authorized_user_file(
-                str(self.token_path),
-                self.SCOPES,
+        credentials = self.credentials
+        if credentials is None:
+            raise RuntimeError(
+                "Connect Gmail through Privora before running Gmail discovery."
             )
-
-        if credentials is None or not credentials.valid:
-            if (
-                credentials
-                and credentials.expired
-                and credentials.refresh_token
-            ):
+        if not credentials.valid:
+            if not credentials.expired or not credentials.refresh_token:
+                raise RuntimeError("Gmail authorization is no longer valid.")
+            try:
                 credentials.refresh(Request())
-            else:
-                if not self.credentials_path.exists():
-                    raise FileNotFoundError(
-                        f"Gmail credentials not found: "
-                        f"{self.credentials_path}"
-                    )
-
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    str(self.credentials_path),
-                    self.SCOPES,
-                )
-                credentials = flow.run_local_server(port=0)
-
-            self.token_path.write_text(
-                credentials.to_json(),
-                encoding="utf-8",
-            )
+            except RefreshError as exc:
+                raise GmailAuthorizationError(
+                    "Gmail authorization expired or was revoked. Reconnect Gmail."
+                ) from exc
+            if self.save_credentials:
+                self.save_credentials(credentials)
 
         return build(
             "gmail",
             "v1",
             credentials=credentials,
+            cache_discovery=False,
         )
 
     @staticmethod
@@ -183,7 +219,7 @@ class GmailProvider(DiscoverySource):
             "sender": headers.get("from", ""),
             "subject": headers.get("subject", ""),
             "timestamp": timestamp,
-            "body": GmailProvider._extract_body(payload),
+            "body": "",
         }
 
     @staticmethod

@@ -1,19 +1,10 @@
-from fastapi import FastAPI
+"""Backward-compatible entry point for the complete application.
 
-from discovery.api.routes import router as discovery_router
+Supports ``uvicorn main:app`` from ``backend/`` and
+``uvicorn backend.main:app`` from the repository root.
+"""
 
-app = FastAPI(
-    title="Privora API",
-    description="Privacy-focused Personal Data Lifecycle Agent",
-    version="0.1.0",
-)
-
-app.include_router(discovery_router)
-
-
-@app.get("/health")
-def health_check() -> dict[str, str]:
-    return {
-        "status": "ok",
-        "service": "privora",
-    }
+if __package__ == "backend":
+    from backend.app.main import app
+else:
+    from app.main import app

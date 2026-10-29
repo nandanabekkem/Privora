@@ -1,4 +1,4 @@
-from app.models.base import (
+from .base import (
     Account,
     AuditLog,
     DataRecord,

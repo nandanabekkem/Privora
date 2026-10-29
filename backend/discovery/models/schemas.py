@@ -41,7 +41,6 @@ class DiscoveredAccount(BaseModel):
     data_categories: List[DataCategory] = Field(default_factory=list)
 
     account_status: AccountStatus = AccountStatus.UNKNOWN
-
     evidence: List[str] = Field(default_factory=list)
 
 

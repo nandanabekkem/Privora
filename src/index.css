@@ -34,8 +34,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--light); out
 .mark i:nth-child(2), .mark i:nth-child(3) { border-radius: 100%; }
 .mark--small { grid-template-columns: repeat(2, 8px); gap: 3px; width: 19px; height: 19px; }
 .nav { display: flex; align-items: center; gap: clamp(20px,3vw,50px); }
-.nav button, .login-link, .footer button { background: none; border: 0; cursor: pointer; color: #a6a6a6; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
-.nav button:hover, .login-link:hover, .footer button:hover { color: var(--white); }
+.nav button, .login-link, .footer button, .footer a { background: none; border: 0; cursor: pointer; color: #a6a6a6; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; text-decoration: none; }
+.nav button:hover, .login-link:hover, .footer button:hover, .footer a:hover { color: var(--white); }
 .header__actions { display: flex; justify-content: flex-end; align-items: center; gap: 26px; }
 .signup-link { background: var(--white); color: var(--black); border: 0; height: 42px; padding: 0 18px; text-transform: uppercase; letter-spacing: .08em; font-size: 11px; font-weight: 600; display: flex; gap: 22px; align-items: center; cursor: pointer; }
 .signup-link svg, .button svg, .round-arrow svg, .panel-heading svg, .recommendation svg, .chat form svg { width: 17px; fill: none; stroke: currentColor; stroke-width: 1.6; }
@@ -150,6 +150,21 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--light); out
 .footer p { color:#777; line-height:1.7; font-size:12px; }
 .footer > div { display:flex; gap:25px; }
 .footer > span { font:9px "DM Mono"; color:#555; }
+.legal-page { width:min(920px, 100%); min-height:calc(100vh - 286px); margin:0 auto; padding:clamp(44px, 8vw, 96px) 28px 72px; }
+.legal-page__back { display:inline-flex; align-items:center; gap:10px; margin:0 0 52px; padding:0; border:0; background:none; color:#aaa; font:11px "DM Mono"; letter-spacing:.08em; cursor:pointer; }
+.legal-page__back:hover { color:var(--white); }
+.legal-page__intro { max-width:760px; margin-bottom:50px; }
+.legal-page__eyebrow { color:#aaa; font:10px "DM Mono"; letter-spacing:.16em; }
+.legal-page__intro h1, .legal-page--not-found h1 { margin:18px 0 10px; font-size:clamp(40px, 7vw, 76px); line-height:.98; letter-spacing:-.06em; font-weight:500; }
+.legal-page__effective { color:#777; font:11px "DM Mono"; letter-spacing:.04em; }
+.legal-page__intro > p:last-child, .legal-page__section p, .legal-page--not-found p { color:#aaa; font-size:14px; line-height:1.8; }
+.legal-page__section { padding:28px 0; border-top:1px solid var(--line); }
+.legal-page__section h2 { margin:0 0 12px; color:var(--white); font-size:18px; font-weight:500; letter-spacing:-.02em; }
+.legal-page__section p { margin:10px 0; }
+.legal-page__section code { color:#dedede; font:12px "DM Mono"; overflow-wrap:anywhere; }
+.legal-page__policy-commitment { padding-left:16px; border-left:2px solid #777; }
+.legal-page__draft-note { margin-top:30px; padding:16px 18px; border:1px solid #493d2c; background:linear-gradient(105deg, rgba(111,78,36,.12), rgba(111,78,36,.04)); color:#b7a88f; font-size:12px; line-height:1.7; }
+.legal-page--not-found { padding-top:15vh; }
 
 .auth { min-height:calc(100vh - 76px); display:grid; grid-template-columns:52% 48%; }
 .auth__visual { position:relative; border-right:1px solid var(--line); padding:7vh 4vw; overflow:hidden; }
@@ -242,14 +257,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--light); out
 .account em { color:#8c8c8c; border:1px solid #333; font:normal 8px "DM Mono"; padding:5px 7px; text-transform:uppercase; }
 .account em.review { color:var(--light); border-color:#555555; }
 .account > button { background:none; border:0; color:#555; cursor:pointer; }
-.data-map { min-height:415px; }
-.data-orbit { height:329px; position:relative; display:grid; place-items:center; overflow:hidden; background-image:radial-gradient(#252525 1px,transparent 1px); background-size:14px 14px; }
-.data-orbit:before,.data-orbit:after { content:""; position:absolute; border:1px solid #292929; border-radius:50%; width:260px; height:260px; }
-.data-orbit:after { width:150px; height:150px; }
-.data-orbit__center { width:65px; height:65px; display:grid; place-items:center; border-radius:50%; background:var(--light); color:#000; font:10px "DM Mono"; z-index:2; }
-.node { position:absolute; background:#0c0c0c; border:1px solid #383838; padding:6px; font:7px "DM Mono"; color:#838383; z-index:2; }
-.node--1 { top:36px; left:45%; }.node--2 { top:45%; right:25px; }.node--3 { bottom:38px; right:31%; }.node--4 { top:51%; left:18px; }.node--5 { top:90px; left:35px; }
 .recommendations { grid-column:1/-1; }
+.recommendations__privacy-note { margin:0; padding:12px 20px; border-bottom:1px solid var(--line); color:#999; font-size:12px; line-height:1.55; }
 .demo-tag { color:#777; border:1px solid #333; padding:5px 7px; font:10px "DM Mono"; }
 .recommendation { min-height:90px; display:grid; grid-template-columns:50px 1fr auto; align-items:center; gap:18px; padding:16px 20px; border-bottom:1px solid var(--line); overflow:hidden; }
 .risk { width:38px; height:38px; display:grid; place-items:center; border:1px solid #555; font:9px "DM Mono"; }
@@ -280,6 +289,23 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--light); out
 .chat form { display:flex; border-top:1px solid var(--line); padding:12px; }
 .chat form input { flex:1; min-width:0; background:transparent; border:0; color:white; font-size:11px; padding:0 8px; outline:0; }
 .chat form button { width:38px; height:38px; border:0; background:var(--light); color:#000; display:grid; place-items:center; cursor:pointer; }
+.chat__head-actions { display:flex; align-items:center; gap:8px; }
+.chat__head-actions button { width:34px; height:34px; display:grid; place-items:center; background:#111; border:1px solid #393939; color:#ddd; font-size:18px; cursor:pointer; }
+.chat__head-actions button:hover, .chat__head-actions button:focus-visible { color:#fff; border-color:#888; }
+.chat__head-actions button:focus-visible, .chat__account select:focus-visible { outline:2px solid #c9945e; outline-offset:2px; }
+.chat__account { display:grid; gap:7px; width:min(320px, calc(100% - 32px)); min-width:0; margin:0 16px 10px; padding:0; color:#aaa; font:8px "DM Mono"; letter-spacing:.1em; }
+.chat__account select, .chat__account select option { color:#eee; background:#111; }
+.chat__account select { width:100%; min-width:0; max-width:100%; min-height:40px; padding:0 10px; border:1px solid #484848; font-size:12px; font-family:inherit; letter-spacing:normal; text-overflow:ellipsis; }
+.chat__account select option:checked, .chat__account select option:hover { color:#fff; background:#303030; }
+.chat__privacy-note { display:block; width:min(320px, calc(100% - 32px)); max-width:100%; margin:0 16px 14px; padding:12px; border:1px solid #292929; color:#aaa; font-size:11px; line-height:1.55; overflow-wrap:anywhere; }
+.chat--expanded { position:fixed; inset:3vh 3vw; z-index:101; width:auto; height:auto; max-height:94vh; margin:0; }
+.chat--expanded .chat__messages { min-height:0; }
+.deletion-disclaimer { display:grid; grid-template-columns:24px minmax(0,1fr); gap:16px; max-width:1100px; margin:0 auto 56px; padding:24px clamp(18px,4vw,40px); border:1px solid transparent; border-radius:0; background:linear-gradient(#100e0c,#100e0c) padding-box,linear-gradient(110deg,rgba(191,112,63,.62),rgba(196,151,76,.48)) border-box; }
+.deletion-disclaimer__icon { width:22px; height:22px; color:#c98b56; }
+.deletion-disclaimer__icon svg { display:block; width:100%; height:100%; }
+.deletion-disclaimer h2 { margin:0 0 9px; color:#d39a65; font-size:14px; font-weight:500; letter-spacing:.01em; }
+.deletion-disclaimer p { margin:0; max-width:900px; color:#b8b1a9; font-size:12px; line-height:1.75; overflow-wrap:anywhere; }
+.data-card__draft-body { white-space:pre-wrap; overflow-wrap:anywhere; word-break:normal; }
 
 /* Monochrome guardian atmosphere */
 .guardian:before {
@@ -466,6 +492,9 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--light); out
   .review-loader { min-width:600px; grid-template-columns:50px 1fr; }
   .review-loader__line { grid-column:1/-1; }
   .chat-wrap { right:14px; bottom:14px; }
+  .chat--expanded { inset:0; max-height:100dvh; }
+  .deletion-disclaimer { margin:0 16px 36px; gap:12px; padding:18px 16px; }
+  .deletion-disclaimer p { font-size:12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -594,11 +623,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--light); out
   font-size: 10px;
 }
 
-/* Data map labels */
-.dashboard .node {
-  font-size: 9px;
-}
-
 /* Empty states */
 .dashboard .empty {
   font-size: 14px;
@@ -618,6 +642,334 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--light); out
   .dashboard .message {
     font-size: 13px;
   }
+}
+
+/* Scoped dashboard polish for the requested pages. */
+.dashboard {
+  background-image: radial-gradient(rgba(91, 91, 91, 0.18) 0.8px, transparent 0.8px);
+  background-size: 22px 22px;
+}
+.dashboard--overview .dash-grid { grid-template-columns:minmax(0, 1fr); }
+
+/* My Accounts actions share the heading row when it has room and wrap below. */
+.dashboard--my-accounts .dash-heading { justify-content:space-between; align-items:flex-end; gap:24px; }
+.dashboard--my-accounts .my-accounts-controls { display:flex; flex-direction:column; align-items:flex-end; gap:9px; min-width:0; max-width:100%; }
+.dashboard--my-accounts .my-accounts-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:10px; min-width:0; max-width:100%; }
+.dashboard--my-accounts .my-accounts-status { max-width:100%; margin:0; color:#aaa; font-size:12px; line-height:1.5; text-align:right; }
+
+.dashboard--my-accounts .my-accounts-actions .scan-button {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-height: 48px;
+  height: auto;
+  padding: 10px 18px;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+}
+
+.dashboard--my-accounts .my-accounts-actions .scan-button:disabled { cursor:wait; opacity:.65; }
+
+.dashboard--my-accounts .account-tools input,
+.dashboard--my-accounts .filters button,
+.dashboard--my-accounts .account-table,
+.dashboard--my-accounts .account-table > button {
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.dashboard--my-accounts .account-table--head {
+  font: 13px/1.5 "DM Mono", monospace;
+}
+
+.dashboard--my-accounts .demo-banner strong {
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: normal;
+}
+
+.dashboard--my-accounts .account-table small {
+  display: block;
+  margin-top: 4px;
+  color: #aaa;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.dashboard--my-accounts .account-table em {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.dashboard--my-accounts .demo-banner span,
+.dashboard--my-accounts .wide-panel > p {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Personal Data uses a vertical account list so expanding one result does not
+   resize or realign a neighboring card. */
+.dashboard--personal-data .data-cards {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  min-width: 0;
+  border: 0;
+}
+
+.dashboard--personal-data .data-cards > .demo-banner {
+  border: 1px solid #383838;
+}
+
+.dashboard--personal-data .data-card {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: clamp(18px, 2.4vw, 30px);
+  border: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.dashboard--personal-data .data-card > span {
+  font-size: 13px;
+}
+
+.dashboard--personal-data .data-card h2 {
+  min-width: 0;
+  margin: 10px 0 18px;
+  font-size: 28px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.dashboard--personal-data .data-card__content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard--personal-data .data-card__content > p {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.38fr) minmax(0, 0.62fr);
+  align-items: start;
+  justify-content: initial;
+  gap: 14px;
+  min-width: 0;
+  font-size: 16px !important;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.dashboard--personal-data .data-card__content > p em {
+  display: block;
+  min-width: 0;
+  color: #c3c3c3;
+  font: normal 15px/1.55 "Space Grotesk", sans-serif;
+  text-align: left;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.dashboard--personal-data .data-card__content a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.dashboard--personal-data .data-card__content > .flex {
+  margin: 16px 0 8px;
+}
+
+.dashboard--personal-data .data-card__content .scan-button,
+.dashboard--personal-data .data-card__content button {
+  max-width: 100%;
+  min-height: 42px;
+  height: auto;
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dashboard--personal-data .data-card__content > small {
+  display: block;
+  margin: 4px 0 12px;
+  color: #aaa;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.dashboard--personal-data .data-card__analysis,
+.dashboard--personal-data .data-card__draft {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  margin: 12px 0;
+  border: 1px solid #383838;
+  overflow-wrap: anywhere;
+}
+
+.dashboard--personal-data .data-card__analysis strong,
+.dashboard--personal-data .data-card__draft strong {
+  max-width: 100%;
+  font-size: 13px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dashboard--personal-data .data-card__analysis span,
+.dashboard--personal-data .data-card__draft span,
+.dashboard--personal-data .data-card__draft a {
+  max-width: 100%;
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.dashboard--personal-data .data-card__draft-body {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #333;
+  background: #080808;
+  color: #e2e2e2;
+  font: 15px/1.65 "Space Grotesk", sans-serif;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.dashboard--personal-data > .dash-content > p {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Activity History text is readable without forcing a narrow viewport into
+   a fixed-width horizontal row. */
+.dashboard--activity-history .history > p {
+  padding: 14px 20px;
+  font-size: 15px !important;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.dashboard--activity-history .history .demo-banner strong {
+  font-size: 12px;
+}
+
+.dashboard--activity-history .history .demo-banner span {
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.dashboard--activity-history .history-row {
+  grid-template-columns: minmax(130px, 0.8fr) minmax(140px, 1fr) minmax(0, 2fr) auto;
+  min-width: 0;
+  gap: 16px;
+}
+
+.dashboard--activity-history .history-row > span {
+  font: 14px/1.5 "DM Mono", monospace;
+  overflow-wrap: anywhere;
+}
+
+.dashboard--activity-history .history-row > i {
+  font: normal 13px/1.5 "DM Mono", monospace;
+  overflow-wrap: anywhere;
+}
+
+.dashboard--activity-history .history-row strong {
+  min-width: 0;
+  font-size: 16px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.dashboard--activity-history .history-row em {
+  max-width: 100%;
+  font: normal 13px/1.45 "DM Mono", monospace;
+  overflow-wrap: anywhere;
+}
+
+/* Keep recommendation content balanced after removing its square RULE badge. */
+.dashboard .recommendation {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding-left: 32px;
+}
+
+.dashboard .recommendation__body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.dashboard .recommendation__body p {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1100px) {
+  .dashboard--my-accounts .dash-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .dashboard--my-accounts .my-accounts-controls { align-items:flex-start; width:100%; }
+  .dashboard--my-accounts .my-accounts-actions { justify-content:flex-start; }
+  .dashboard--my-accounts .my-accounts-status { text-align:left; }
+
+}
+
+@media (max-width: 768px) {
+  .dashboard--personal-data .data-card__content > p {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .dashboard--activity-history .history-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .dashboard .recommendation {
+    grid-template-columns: minmax(0, 1fr);
+    padding-left: 24px;
+  }
+
+  .dashboard .recommendation__actions {
+    grid-column: 1;
+    flex-wrap: wrap;
+  }
+}
+
+/* Keep the three requested page sizes ahead of legacy dashboard-wide rules. */
+.dashboard.dashboard--my-accounts .demo-banner strong {
+  font-size: 13px !important;
+}
+
+.dashboard.dashboard--my-accounts .account-table em {
+  font-size: 14px;
+}
+
+.dashboard.dashboard--personal-data .data-card .data-card__content > p {
+  font-size: 16px !important;
+}
+
+.dashboard.dashboard--activity-history .history.wide-panel > p {
+  font-size: 15px !important;
 }
 
 /* Make account cards more readable */
@@ -791,8 +1143,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--light); out
 .dashboard .data-field strong,
 .dashboard .data-item strong,
 .dashboard .data-card strong,
-.dashboard .personal-data strong,
-.dashboard .data-map strong {
+.dashboard .personal-data strong {
   font-size: 16px !important;
   line-height: 1.6;
 }

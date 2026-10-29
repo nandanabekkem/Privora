@@ -1,12 +1,13 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-from app.core.config import settings
+from .config import settings
 
 
-engine = create_engine(
-    settings.DATABASE_URL,
-    pool_pre_ping=True,
+engine = (
+    create_engine(settings.DATABASE_URL, pool_pre_ping=True)
+    if settings.DATABASE_URL
+    else None
 )
 
 
@@ -22,6 +23,10 @@ class Base(DeclarativeBase):
 
 
 def get_db():
+    if engine is None:
+        raise RuntimeError(
+            "DATABASE_URL must be configured to use the legacy SQLAlchemy database."
+        )
     db = SessionLocal()
     try:
         yield db

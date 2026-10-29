@@ -1,11 +1,20 @@
-from datetime import datetime
+
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
 
-from app.core.database import get_db
-from app.models import Policy, User
+from ..core.authentication import (
+    authorize_user_path,
+    canonical_user_id,
+    get_current_user,
+    validate_numeric_user_path,
+)
+from ..core.firestore_store import (
+    create_document,
+    get_document,
+    list_by_field,
+)
 
 
 router = APIRouter(
@@ -29,86 +38,79 @@ class PolicyCreate(BaseModel):
         return value
 
 
-def get_policy_response(policy: Policy) -> dict:
+def numeric_id(value):
+    return int(value) if str(value).isdigit() else value
+
+
+def get_policy_response(policy: dict) -> dict:
     return {
-        "id": policy.id,
-        "user_id": policy.user_id,
-        "policy_type": policy.policy_type,
-        "policy_text": policy.policy_text,
-        "created_at": policy.created_at,
+        "id": numeric_id(policy["id"]),
+        "user_id": numeric_id(policy["user_id"]),
+        "policy_type": policy.get("policy_type"),
+        "policy_text": policy.get("policy_text"),
+        "created_at": policy.get("created_at"),
     }
 
 
-@router.get("/{user_id}")
-def get_user_policies(
-    user_id: int,
-    db: Session = Depends(get_db),
-):
-    if user_id <= 0:
-        raise HTTPException(
-            status_code=422,
-            detail="User ID must be a positive integer",
-        )
-
-    user = db.query(User).filter(User.id == user_id).first()
-
-    if user is None:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found",
-        )
-
-    policies = (
-        db.query(Policy)
-        .filter(Policy.user_id == user_id)
-        .order_by(Policy.id)
-        .all()
+def get_user_policies(user_id: int | str) -> list[dict]:
+    policies = list_by_field("policies", "user_id", user_id)
+    policies.extend(
+        list_by_field("policies", "user_id", str(user_id))
     )
 
+    unique = {policy["id"]: policy for policy in policies}
+
+    return sorted(
+        unique.values(),
+        key=lambda policy: (
+            0 if str(policy["id"]).isdigit() else 1,
+            int(policy["id"]) if str(policy["id"]).isdigit()
+            else str(policy["id"]),
+        ),
+    )
+
+
+@router.get("/{user_id}")
+def get_user_policies_endpoint(
+    user_id: str,
+    claims: dict = Depends(get_current_user),
+):
+    validate_numeric_user_path(user_id)
+
+    user = authorize_user_path(user_id, claims)
+    owned_user_id = canonical_user_id(user)
+
+    policies = get_user_policies(owned_user_id)
+
     return {
-        "user_id": user_id,
+        "user_id": owned_user_id,
         "policy_count": len(policies),
         "policies": [
-            get_policy_response(policy)
-            for policy in policies
+            get_policy_response(policy) for policy in policies
         ],
     }
 
 
 @router.post("/{user_id}", status_code=201)
 def create_user_policy(
-    user_id: int,
+    user_id: str,
     payload: PolicyCreate,
-    db: Session = Depends(get_db),
+    claims: dict = Depends(get_current_user),
 ):
-    if user_id <= 0:
-        raise HTTPException(
-            status_code=422,
-            detail="User ID must be a positive integer",
-        )
+    validate_numeric_user_path(user_id)
 
-    user = db.query(User).filter(User.id == user_id).first()
+    user = authorize_user_path(user_id, claims)
+    owned_user_id = canonical_user_id(user)
 
-    if user is None:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found",
-        )
-
-    policy = Policy(
-        user_id=user_id,
-        policy_type=payload.policy_type,
-        policy_text=payload.policy_text,
+    policy = create_document(
+        "policies",
+        {
+            "user_id": owned_user_id,
+            "policy_type": payload.policy_type,
+            "policy_text": payload.policy_text,
+            "created_at": datetime.now(timezone.utc),
+        },
     )
-
-
-    try:
-        db.add(policy)
-        db.commit()
-        db.refresh(policy)
-    except Exception:
-        db.rollback()
-        raise
 
     return {
         "message": "Privacy policy created successfully",
